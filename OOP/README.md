@@ -522,7 +522,7 @@ cout << c1 << endl`;
 
 ## 三大函数:拷贝构造、拷贝复制、析构
 当在类中没有定义拷贝构造函数和拷贝赋值构造函数，编译器会提供一套拷贝构造函数和拷贝赋值构造函数。
-如果类的成员里面有指针，一定要重写拷贝构造函数和赋值构造函数
+如果类的成员里面有指针，一定要重写拷贝构造函数和赋值构造函数。
 
 ### BigThree ，三个特殊函数
 ```cpp
@@ -538,17 +538,35 @@ private:
     char* m_data;
 };
 ```
-m_data是一个指向字符数组的指针，例如:m_data——>hello。
+m_data是一个指向字符数组的指针，如下所示:
 
-`String(const String& str)`接收的是自身类型的参数，即和类本身，故称为拷贝构造函数。
-
-`String& operator = (const String&)`赋值的右边参数类型也是自身，故称为拷贝赋值构造函数。
-
-`~String()` 称为析构函数。当String类产生的对象死亡时析构函数会被调用起来。
+<div align=center>
+<img src="../OOP/image/image1.png"/>
+</div>
 
 
-`char* get_c_str() const {return m_data}` 不改变m_data，**所以一定要加上coonst**。做到出手即证明。
+```cpp
+String(const String& str)
+```
+函数接收的是自身类型的参数，即和类本身，故称为拷贝构造函数。
 
+```cpp
+String& operator = (const String&)
+```
+函数赋值的右边参数类型也是自身，故称为拷贝赋值构造函数。
+
+```cpp
+~String()
+```
+称为析构函数。当String类产生的对象死亡时析构函数会被调用起来。
+
+
+```cpp
+char* get_c_str() const {return m_data}
+```
+不改变m_data，**所以一定要加上coonst**。做到出手即证明。
+
+### ctor 和 dctor(构造函数和析构函数)
 
 class里有指针，多半要做动态分配，在对象死亡之前析构函数会被调用，需要在析构函数中释放掉动态分配的内存，否则会造成内存泄漏。
 
@@ -560,7 +578,7 @@ inline String::String(const char* cstr = 0)
         m_data = new char[strlen(cstr) + 1]; //分配长度为strlen(str)+1的内存
         strcpy(m_data,cstr);
     } 
-    else{  // 未指定指
+    else{  // 未指定value
         m_data = new char[1];
         *m_data = '\0';
     }
@@ -574,30 +592,263 @@ inline String:: ~String()
 ```
 
 ```cpp
-String s1(),
-String s2("hello");
+{
+    String s1(),
+    String s2("hello");
 
-String* p = new String("hello"); // 动态创建字符串
-delete p;
+    String* p = new String("hello"); // 动态创建字符串
+    delete p;
+}
 ```
-### 拷贝构造函数
+### class with pointer member 必须有copy ctor 和 copy op=
+<div align=center>
+<img src="../OOP/image/image4.png"/>
+</div>
 
 
-### 拷贝赋值函数
+```cpp
+String a("Hello");
+String b("World");
+```
+
+使用`default copy ctor`或 `default op =` 将a拷贝到b会变成以下的情况：
+```cpp
+b = a;
+```
+<div align=center>
+<img src="../OOP/image/image5.png"/>
+</div>
+
+由于对象a和对象b只含有指针，因此拷贝赋值后，b的指针会指向a的指针指向的字符串数组，此时“World\0”的内存块没有指针所指向，已经成了一块无法利用内存，会出现内存泄漏。同时，将来修改a的指针指向的对象，b的指针指向的对象也会发生改变。这种称为“浅拷贝”。
 
 
+### copy ctor(拷贝构造函数)
+**深拷贝**需要分配足够的空间来容纳蓝本。如果没有写这个函数，编译器只会把指针拷贝过来，这种实际是**浅拷贝**
+```cpp
+inline String::String(cosnt String& const String& str)
+{
+    m_data = new char[strlen(str.m_data) + 1];
+    strcpy(m_data,str.m_data);
+}
+```
+直接取另一个object的private data(兄弟之间互为friend)。
+```cpp
+{
+    String s1("hello ");
+    String s2(s1); // 以s1为蓝本或者初值创建s2
+   // String s2 = s1;
+}
+```
+
+### copy assignment operator(拷贝赋值函数)
+把s1拷贝赋值到s2，需要走三步：
+1.清空s1;
+2.s2分配一块和s1一样大的空间；
+3.然后把s1拷贝到s2。
+```cpp
+inline String& String::operator= (const String& )
+{
+    if(this == &str)  // 检查自我赋值 (self assignment)
+    {
+        return *this;
+    }
+    delete[] m_data; // ①
+    m_data = new char[strlen(str.m_data) + 1]  //②
+    strcpy(m_data,str.m_data) //③
+    return *this;
+}
+```
+
+```cpp
+{
+    String s1("hello ");
+    String s2(s1);
+    s2 = s1;
+}
+```
+<div align=center>
+<img src="../OOP/image/image6.png"/>
+</div>
+
+<div align=center>
+<img src="../OOP/image/image7.png"/>
+</div>
+
+<div align=center>
+<img src="../OOP/image/image8.png"/>
+</div>
+
+### 一定要在operator= 中检查是否self assignment
+
+左右pointers指向同一个memory block
+
+<div align=center>
+<img src="../OOP/image/image9.png"/>
+</div>
+前面说的`operatpr=`的第一件事就是delete，会造成下面的后果
+<div align=center>
+<img src="../OOP/image/image10.png"/>
+</div>
+然后，当企图存取(访问)rhs，会产生不确定行为(undefined behaviour)
+
+### output 函数
+重载操作符
+```cpp
+#include <iostream.h>
+ostream& operator << (ostream& os，const String& str)
+{
+    os << str.get_c_str();
+    return os;
+}
+```
+```cpp
+{
+    String 
+}
+```
 ## 堆、栈与内存模型
+### stack(栈)和heap(堆)
+**Stack**，是存在于某作用域(scope)的一块内存空间(memory space)。例如当你调用函数，函数本身即会形成以一个stack用来放置它所接收的参数，以及返回地址。
 
+在函数本身(function body)内声明的任何变量，其所使用的内存块都取自上述stack。
 
-## 类模板、函数模板、及其他
+**Heap**，或者**System heap**，是指操作系统提供的一块global内存空间，程序可动态分配(dynamic allocated)从中获得若干区块(blocks);
 
+```cpp
+class Complex{ ... }
+...
+{
+    Complex c1(1,2);
+    Complex* p =  new Complex(3);
+}
+```
+c1所占用的空间来自stack;
+`Complex(3)`是个临时对象其所占用的空间是以 `new` 自 heap 动态分配而得，并由 p 指向。
 
-## 组合与继承
+### stack objects的生命期
+```cpp
+class Complex{...};
+...
+{
+    Complex c1(1,2);
+}
+```
+c1 就是是所谓 stack object，其生命在作用域 (scope) 结束之后結束。这种作用域內的 object，又称为 auto object，因为它会被「自动」清理。
 
-## 虚函数与多态
+### static local objects 的生命期
+```cpp
+class Complex{...};
+...
+{
+    static Complex c1(1,2);
+}
+```
+c2 就是所谓 static object，其生命在作用域 (scope)結束之后仍然存在，直到整个程序结束。
 
+### global objects 的生命期
+```cpp
+class Complex { … };
+...
+Complex c3(1,2);
+int main()
+{
+...
+}
+```
+### heap objects 的生命期
+```cpp
+class Complex { … };
+...
+{
+Complex* p = new Complex;
+...
+delete p;
+}
+```
+P 所指的便是 `heap object`，其生命在它被 deleted 之后結束。
 
-## 委托相关设计
+```cpp
+class Complex { … };
+...
+{
+    Complex* p = new Complex;
+}
+```
+以上出現內存泄漏 (memory leak)，因为作用域結束，p 所指的 heap object 仍然存在，但指針 p 的生命却结束了，作用域之外再也看不到 p(也就沒机会 delete p）
+
+### new:先分配 memory，再调用ctor
+```cpp
+Complex* pc = new Complex(1,2);
+```
+编译器会把new分解为三个动作：
+```cpp
+Complex *pc;
+
+void* mem = operator new(sizeof(Complex)); //1.内存分配
+pc = static_cast<Complex*>(mem);          //2.转型
+pc->Complex::Complex(1,2);                //3.构造函数
+```
+代码1的内部会调用`malloc(n)`。
+代码2会把pc指向一个大小为2个double的内存块，其类型是类Complex。
+<div align=center>
+<img src="../OOP/image/image11.png"/>
+</div>
+
+代码3实际是在调用`Complex::Complex(pc,1,2)`。注意第一个入参是`pc`，这是this指针的结果。构造函数会把初始指1和2塞到pc指向的2个内存块中
+
+### delete：先调用用 dtor, 再释放 memory
+```cpp
+Complex* pc = new Complex(1,2);
+...
+delete pc;
+```
+编译器会把delete转化为下面两个动作
+```cpp
+Complex::~Complex(pc); // 1.析构函數
+operator delete(pc); //2.释放内存
+```
+代码1会调用析构函数，析构函数的定义如下：
+```cpp
+class Complex
+{
+public:
+    ~Complex() {...}
+...
+private:
+    double m_real;
+    double m_imag;
+};
+```
+由于类Complex的对象是在栈里分配的内存，所以其生命在作用域 (scope) 结束之后结束，被自动清理了。所以析构函数不会做任何事。
+
+### delete：先调用 dtor, 再释放 memory
+```cpp
+String* ps = new String("Hello");
+...
+delete ps;
+```
+编译器会把delete转化为下面两个动作
+```cpp
+String::~String(ps); // 1.析构函数
+operator delete(ps); // 2.释放内存
+```
+首先动作1会调用析构函数，析构函数的定义如下：
+```cpp
+class String
+{
+public:
+    ~String() 
+    {delete[] m_data}
+...
+private:
+    char* m_data;
+};
+```
+由于这个类内部有动态分配内存，所以析构函数内部需要清理这块动态分配的内存。
+接着，代码2会清理这个字符串本身，这个字符串本身只是一个指针，因此会清理指针ps。代码2的内部会调用`free(ps)`。流程是这样的：
+<div align=center>
+<img src="../OOP/image/image12.png"/>
+</div>
 
 
 参考:https://www.cnblogs.com/QG-whz/p/5517643.html
