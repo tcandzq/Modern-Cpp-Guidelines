@@ -642,11 +642,11 @@ inline String::String(cosnt String& const String& str)
 
 ### copy assignment operator(拷贝赋值函数)
 把s1拷贝赋值到s2，需要走三步：
-1.清空s1;
+1.清空s2;
 2.s2分配一块和s1一样大的空间；
 3.然后把s1拷贝到s2。
 ```cpp
-inline String& String::operator= (const String& )
+inline String& String::operator= (const String& str)
 {
     if(this == &str)  // 检查自我赋值 (self assignment)
     {
